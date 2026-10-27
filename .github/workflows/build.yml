@@ -25,7 +25,7 @@ jobs:
 
       - name: Ekstrak project
         run: |
-          unzip -o SurgeUp-Beta-ready-to-build.zip -d .
+          unzip -o SurgeUp-Part2-project.zip -d .
           test -f SurgeUp/app/build.gradle.kts
 
       - name: Siapkan Gradle
