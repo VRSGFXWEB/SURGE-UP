@@ -1,44 +1,50 @@
 name: Build Surge Up Beta
 
 on:
-  workflow_dispatch:
-  push:
-    branches: [main, master]
+workflow_dispatch:
+push:
+branches: [main, master]
 
 permissions:
-  contents: read
+contents: read
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+build:
+runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+steps:
+  - name: Checkout repository
+    uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
+  - name: Setup Java
+    uses: actions/setup-java@v4
+    with:
+      distribution: temurin
+      java-version: '17'
 
-      - name: Extract project ZIP
-        run: |
-          unzip -o SurgeUp-Part2-project.zip -d .
-          test -f SurgeUp/app/build.gradle.kts
+  - name: Extract project
+    run: |
+      unzip -o SurgeUp-Part2-project.zip -d .
+      echo "Project files:"
+      ls -la
+      test -f SurgeUp/app/build.gradle.kts
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.7'
+  - name: Setup Gradle
+    uses: gradle/actions/setup-gradle@v4
+    with:
+      gradle-version: '8.7'
 
-      - name: Build APK
-        working-directory: SurgeUp
-        run: gradle assembleDebug --no-daemon
+  - name: Build Debug APK
+    working-directory: SurgeUp
+    run: gradle assembleDebug --no-daemon --stacktrace
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: SurgeUp-debug-apk
-          path: SurgeUp/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+  - name: Find APK
+    run: |
+      find SurgeUp -type f -name "*.apk" -print
+
+  - name: Upload APK
+    uses: actions/upload-artifact@v4
+    with:
+      name: SurgeUp-debug-apk
+      path: SurgeUp/**/build/outputs/apk/**/*.apk
+      if-no-files-found: error
