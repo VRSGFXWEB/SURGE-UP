@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -486,7 +487,7 @@ fun ChatPanel(tab: String, onTab: (String) -> Unit, onClose: () -> Unit, modifie
 }
 
 @Composable
-fun ChatTab(label: String, on: Boolean, onClick: () -> Unit) {
+fun RowScope.ChatTab(label: String, on: Boolean, onClick: () -> Unit) {
     Box(
         Modifier.weight(1f).background(if (on) CRed else Color.Transparent).clickable { onClick() }.padding(vertical = 8.dp),
         contentAlignment = Alignment.Center
