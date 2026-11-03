@@ -31,12 +31,25 @@ jobs:
         with:
           gradle-version: 8.7
 
-      - name: Build Debug APK
-        run: gradle assembleDebug --no-daemon --console=plain
+      - name: Build APK
+        run: gradle assembleRelease --no-daemon --console=plain
+
+      - name: Sign APK
+        run: |
+          BT=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)
+          keytool -genkeypair -keystore surge.jks -alias surge \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass surge123 -keypass surge123 -dname "CN=SurgeUp"
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          $BT/zipalign -f -p 4 "$APK" aligned.apk
+          $BT/apksigner sign --ks surge.jks \
+            --ks-pass pass:surge123 --key-pass pass:surge123 \
+            --out SurgeUp.apk aligned.apk
+          $BT/apksigner verify SurgeUp.apk
 
       - name: Release APK
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: SurgeUp Build ${{ github.run_number }}
-          files: SURGEUP/SurgeUp/app/build/outputs/apk/debug/*.apk
+          files: SURGEUP/SurgeUp/SurgeUp.apk
