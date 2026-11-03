@@ -1,0 +1,82 @@
+
+name: Extract SurgeUp ZIP
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'SurgeUp-Part2-project.zip'
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Unzip
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip
+
+      - name: Check SurgeUp-Part2-project.zip
+        run: |
+          if [ ! -f "SurgeUp-Part2-project.zip" ]; then
+            echo "ERROR: SurgeUp-Part2-project.zip tidak ditemukan!"
+            echo "Pastikan ZIP ada di folder utama repository."
+            exit 1
+          fi
+
+          echo "SurgeUp-Part2-project.zip ditemukan!"
+
+      - name: Extract SurgeUp-Part2-project.zip
+        run: |
+          rm -rf SURGEUP
+          mkdir -p SURGEUP
+
+          unzip -o "SurgeUp-Part2-project.zip" -d SURGEUP
+
+          echo "================================"
+          echo "BERHASIL EXTRACT SURGEUP"
+          echo "================================"
+
+          find SURGEUP -maxdepth 4 -type f | head -100
+
+      - name: Check Extract Result
+        run: |
+          if [ -z "$(find SURGEUP -type f -print -quit)" ]; then
+            echo "ERROR: Folder hasil extract kosong!"
+            exit 1
+          fi
+
+          echo "File berhasil ditemukan!"
+
+      - name: Commit Extracted Files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config -user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add SURGEUP
+
+          if git diff --cached --quiet; then
+            echo "Tidak ada perubahan untuk disimpan."
+          else
+            git commit -m "Extract SurgeUp project"
+            git push
+          fi
+
+      - name: Upload Extracted Folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: SURGEUP-EXTRACTED
+          path: SURGEUP/
+          if-no-files-found: error
+          retention-days: 7
+          
