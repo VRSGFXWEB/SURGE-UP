@@ -7,11 +7,9 @@ on:
     branches:
       - main
       - master
-    paths:
-      - 'SURGEUP/**'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -27,38 +25,59 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Find Android Project
+      - name: Accept Android SDK Licenses
         run: |
-          GRADLEW=$(find SURGEUP -type f -name gradlew -print -quit)
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
 
-          if [ -z "$GRADLEW" ]; then
-            echo "ERROR: gradlew tidak ditemukan!"
-            echo "Periksa apakah ZIP berisi Gradle Wrapper."
-            find SURGEUP -maxdepth 5 -type f | head -200
+      - name: Setup Gradle 9.8.2
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.8.2'
+
+      - name: Check Android Project
+        run: |
+          if [ ! -f "settings.gradle.kts" ] || [ ! -d "app" ]; then
+            echo "Project Android tidak ditemukan di root!"
             exit 1
           fi
 
-          PROJECT_DIR=$(dirname "$GRADLEW")
-
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-
-          echo "Project ditemukan di: $PROJECT_DIR"
-
       - name: Build Debug APK
         run: |
-          cd "$PROJECT_DIR"
-          chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          gradle assembleDebug --no-daemon --stacktrace
 
-      - name: Upload APK
+      - name: Locate APK
+        run: |
+          APK=$(find app/build/outputs/apk/debug -type f -name "*.apk" | head -n 1)
+
+          if [ -z "$APK" ]; then
+            echo "APK tidak ditemukan!"
+            exit 1
+          fi
+
+          mkdir -p release-apk
+          cp "$APK" release-apk/SurgeUp-debug.apk
+
+          echo "APK berhasil dibuat!"
+
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: SurgeUp-APK
-          path: |
-            SURGEUP/**/build/outputs/apk/debug/*.apk
+          path: release-apk/SurgeUp-debug.apk
           if-no-files-found: error
           retention-days: 7
+
+      - name: Save APK to Repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add release-apk/SurgeUp-debug.apk
+
+          if git diff --cached --quiet; then
+            echo "APK tidak berubah."
+          else
+            git commit -m "Update SurgeUp APK"
+            git push
+          fi
           
