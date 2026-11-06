@@ -1,6 +1,5 @@
 package com.app.surge.up
 
-import androidx.compose.foundation.layout.weight
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
