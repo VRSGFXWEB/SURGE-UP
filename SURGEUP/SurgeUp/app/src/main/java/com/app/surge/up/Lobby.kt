@@ -195,83 +195,10 @@ LaunchedEffect(msgs.size, tab) {
 if (msgs.isNotEmpty()) listState.scrollToItem(msgs.size - 1)
 }
 
-Column( modifier.clip(RoundedCornerShape(8.dp)).background(CPanel).border(1.dp, CLine, RoundedCornerShape(8.dp)) ) {
-Row(Modifier.fillMaxWidth().background(Color(0xFF0E0E13))) {
-// ✅ FIX: weight(1f) dipindah ke sini (di dalam RowScope), bukan di dalam ChatTab
-ChatTab("GLOBAL", tab == "GLOBAL", Modifier.weight(1f)) { onTab("GLOBAL") }
-ChatTab("TIM", tab == "TIM", Modifier.weight(1f)) { onTab("TIM") }
-Box(Modifier.clickable { onClose() }.padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
-Icon(Icons.Filled.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-}
-}
-Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 8.dp)) {
-if (tab == "TIM" && room == null) {
-Text("Masuk room dulu untuk chat tim.", color = CSoft, fontSize = 12.sp, modifier = Modifier.align(Alignment.Center))
-} else {
-LazyColumn(Modifier.fillMaxSize(), state = listState) {
-items(msgs, key = { it.key }) { m ->
-Row(Modifier.padding(vertical = 4.dp)) {
-Box(Modifier.clickable { scope.launch { val pf = Social.loadProfile(m.id) if (pf != null) UiState.viewFriend = pf } }) {
-Avatar(m.name, 30, nameColor(m.id))
-}
-Spacer(Modifier.width(8.dp))
-Column {
-Row {
-Text(m.name, color = nameColor(m.id), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-Spacer(Modifier.width(6.dp))
-Text(fmt.format(Date(m.t)), color = CSoft, fontSize = 10.sp)
-}
-Text(
-m.text, color = Color.White, fontSize = 13.sp, modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(Color(0xFF1B1B22)).padding(horizontal = 8.dp, vertical = 4.dp)
-)
-}
-}
-}
-}
-}
-}
-if (status.isNotEmpty()) Text(status, color = Color(0xFFFF7A8A), fontSize = 11.sp, modifier = Modifier.padding(horizontal = 10.dp))
-Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-Field(input, { if (it.length <= 100) input = it }, "Ketik pesan...", Modifier.weight(1f))
-Spacer(Modifier.width(6.dp))
-Box(
-Modifier.clip(SlantShape(8f)).background(if (busy) CRedDark else CRed)
-.clickable(enabled = !busy && !(tab == "TIM" && room == null)) {
-val clean = input.replace(Regex("\\s+"), " ").trim()
-if (clean.isNotEmpty()) {
-busy = true
-status = ""
-scope.launch {
-val path = if (tab == "TIM" && room != null) "rooms/" + room.code + "/chat" else "chat/global"
-val b = Moderation.checkBan(Session.id)
-if (b != null) {
-UiState.ban = b
-} else if (Moderation.hasBad(clean)) {
-UiState.ban = Moderation.autoBan(Session.id)
-} else if (Chat.send(Session.id, Session.name, clean, path)) {
-input = ""
-val m = Chat.fetch(path)
-if (m != null) {
-if (tab == "TIM") UiState.teamMessages = m else UiState.messages = m
-}
-} else {
-status = "Pesan gagal terkirim."
-}
-busy = false
-}
-}
-}
-.padding(horizontal = 16.dp, vertical = 10.dp),
-contentAlignment = Alignment.Center
-) {
-Icon(Icons.Filled.Send, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-}
-}
-}
+Column( modifier.clip(RoundedCornerShape(8.dp)).background(CPanel).border(1.dp, CLine, RoundedCornerShape(8.dp)) ) { Row(Modifier.fillMaxWidth().background(Color(0xFF0E0E13))) { ChatTab("GLOBAL", tab == "GLOBAL", Modifier.weight(1f)) { onTab("GLOBAL") } ChatTab("TIM", tab == "TIM", Modifier.weight(1f)) { onTab("TIM") } Box(Modifier.clickable { onClose() }.padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp)) } } Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 8.dp)) { if (tab == "TIM" && room == null) { Text("Masuk room dulu untuk chat tim.", color = CSoft, fontSize = 12.sp, modifier = Modifier.align(Alignment.Center)) } else { LazyColumn(Modifier.fillMaxSize(), state = listState) { items(msgs, key = { it.key }) { m -> Row(Modifier.padding(vertical = 4.dp)) { Box(Modifier.clickable { scope.launch { val pf = Social.loadProfile(m.id) if (pf != null) UiState.viewFriend = pf } }) { Avatar(m.name, 30, nameColor(m.id)) } Spacer(Modifier.width(8.dp)) Column { Row { Text(m.name, color = nameColor(m.id), fontWeight = FontWeight.Bold, fontSize = 12.sp) Spacer(Modifier.width(6.dp)) Text(fmt.format(Date(m.t)), color = CSoft, fontSize = 10.sp) } Text( m.text, color = Color.White, fontSize = 13.sp, modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(Color(0xFF1B1B22)).padding(horizontal = 8.dp, vertical = 4.dp) ) } } } } } } if (status.isNotEmpty()) Text(status, color = Color(0xFFFF7A8A), fontSize = 11.sp, modifier = Modifier.padding(horizontal = 10.dp)) Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) { Field(input, { if (it.length <= 100) input = it }, "Ketik pesan...", Modifier.weight(1f)) Spacer(Modifier.width(6.dp)) Box( Modifier.clip(SlantShape(8f)).background(if (busy) CRedDark else CRed) .clickable(enabled = !busy && !(tab == "TIM" && room == null)) { val clean = input.replace(Regex("\\s+"), " ").trim() if (clean.isNotEmpty()) { busy = true status = "" scope.launch { val path = if (tab == "TIM" && room != null) "rooms/" + room.code + "/chat" else "chat/global" val b = Moderation.checkBan(Session.id) if (b != null) { UiState.ban = b } else if (Moderation.hasBad(clean)) { UiState.ban = Moderation.autoBan(Session.id) } else if (Chat.send(Session.id, Session.name, clean, path)) { input = "" val m = Chat.fetch(path) if (m != null) { if (tab == "TIM") UiState.teamMessages = m else UiState.messages = m } } else { status = "Pesan gagal terkirim." } busy = false } } } .padding(horizontal = 16.dp, vertical = 10.dp), contentAlignment = Alignment.Center ) { Icon(Icons.Filled.Send, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp)) } } } 
 
 }
 
-// ✅ FIX: tambah parameter `modifier` (default Modifier), hapus `Modifier.weight(1f)` dari dalam
 @Composable
 fun ChatTab(label: String, on: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
 Box(
