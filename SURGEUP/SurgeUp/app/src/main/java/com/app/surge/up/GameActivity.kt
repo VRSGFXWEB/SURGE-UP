@@ -56,11 +56,12 @@ class GameActivity : ComponentActivity() {
         val opp = intent.getStringExtra("opp") ?: ""
         val oppName = intent.getStringExtra("oppName") ?: ""
         val map = intent.getStringExtra("map") ?: "TRAINING"
+        val oppChar = intent.getStringExtra("oppChar") ?: "PUNK"
         val base = "https://appassets.androidplatform.net/assets/index.html?name=" + name + "&id=" + id +
             "&gq=" + Session.gq + "&gs=" + (if (Session.gs) "1" else "0") + "&gf=" + (if (Session.gf) "1" else "0") + "&wp=" + Session.weapon + "&char=" + Session.char
         val url = if (opp.isNotEmpty()) {
             // 1v1 online lawan teman: pakai netcode game (me, opp, db)
-            base + "&enemy=" + Uri.encode(oppName) + "&me=" + id + "&opp=" + Uri.encode(opp) + "&db=" + Uri.encode(Fb.GAME)
+            base + "&enemy=" + Uri.encode(oppName) + "&me=" + id + "&opp=" + Uri.encode(opp) + "&db=" + Uri.encode(Fb.GAME) + "&oc=" + oppChar
         } else if (map == "TRAINING") {
             base + "&enemy=BOT&mode=train"
         } else {

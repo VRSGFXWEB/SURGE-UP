@@ -676,6 +676,17 @@ class Inst(val key: String, val model: GlbModel) {
                 lFore = -4f + 70f * env
                 rFore = 4f - 70f * env
             }
+            4 -> { // tepuk tangan
+                lArm = -16f + 62f * env
+                rArm = 16f - 62f * env
+                lFore = -4f + (30f + 22f * sin(et * 10f)) * env
+                rFore = 4f - (30f + 22f * sin(et * 10f)) * env
+            }
+            5 -> { // sorak
+                lArm = -16f + 168f * env
+                rArm = 16f - 168f * env
+                hipsY = 8f * sin(et * 8f) * env
+            }
         }
         m.rotWorld("Hips", 0f, 1f, 0f, hipsY * d)
         m.rotWorld("Spine2", 0f, 0f, 1f, spineZ * d)
@@ -689,7 +700,7 @@ class Inst(val key: String, val model: GlbModel) {
 
     companion object {
         const val EMOTE_DUR = 2.8f
-        val PUNK_EMOTES = arrayOf("Wave", "Run", "Interact", "Punch_Right")
+        val PUNK_EMOTES = arrayOf("Wave", "Run", "Interact", "Punch_Right", "Punch_Left", "Kick_Right")
 
         fun create(ctx: Context, key: String): Inst? {
             val asset = when (key) {
@@ -716,9 +727,10 @@ class Gl3DRenderer(private val ctx: Context, val mode: Int) : GLSurfaceView.Rend
     @Volatile var chars: Array<String> = arrayOf("PUNK")
     @Volatile var weapon: String = "ak"
     @Volatile var yawUser = 0f
-    @Volatile var emoteId = -1
-    @Volatile var emoteT0 = 0L
+    @Volatile var emoteIds = intArrayOf(-1, -1)
+    @Volatile var emoteT0s = longArrayOf(0L, 0L)
     @Volatile var tapEmote = false
+    @Volatile var onLocalTap: (() -> Unit)? = null
 
     private val slots = arrayOfNulls<Inst>(2)
     private val ready = arrayOfNulls<Inst>(2)
@@ -759,9 +771,10 @@ class Gl3DRenderer(private val ctx: Context, val mode: Int) : GLSurfaceView.Rend
     private val shPos = fbuf(12)
     private val shUv = fbuf(8)
 
-    fun playEmote(id: Int) {
-        emoteId = id
-        emoteT0 = SystemClock.uptimeMillis()
+    fun playEmote(slot: Int, id: Int) {
+        if (slot < 0 || slot > 1) return
+        emoteT0s[slot] = SystemClock.uptimeMillis()
+        emoteIds[slot] = id
     }
 
     fun touch(e: MotionEvent) {
@@ -780,7 +793,7 @@ class Gl3DRenderer(private val ctx: Context, val mode: Int) : GLSurfaceView.Rend
             }
             MotionEvent.ACTION_UP -> {
                 dragging = false
-                if (!moved && tapEmote) playEmote((Math.random() * 4.0).toInt())
+                if (!moved && tapEmote) onLocalTap?.invoke()
             }
             MotionEvent.ACTION_CANCEL -> dragging = false
         }
@@ -958,7 +971,7 @@ class Gl3DRenderer(private val ctx: Context, val mode: Int) : GLSurfaceView.Rend
         val m = inst.model
         Matrix.setIdentityM(place, 0)
         Matrix.translateM(place, 0, x, if (inst.isChar) 0f else 1.1f, 0f)
-        if (!inst.isChar) Matrix.rotateM(place, 0, 14f, 1f, 0f, 0f)
+        if (!inst.isChar) Matrix.rotateM(place, 0, 6f, 1f, 0f, 0f)
         Matrix.rotateM(place, 0, yaw + inst.baseYaw, 0f, 1f, 0f)
         Matrix.scaleM(place, 0, inst.sc, inst.sc, inst.sc)
         Matrix.translateM(place, 0, -inst.cx, -inst.cy, -inst.cz)
@@ -1058,20 +1071,19 @@ class Gl3DRenderer(private val ctx: Context, val mode: Int) : GLSurfaceView.Rend
 
         drawBg()
 
-        var et = (now - emoteT0) / 1000f
-        var em = emoteId
-        if (em >= 0 && et > Inst.EMOTE_DUR) {
-            emoteId = -1
-            em = -1
-        }
-        if (em < 0) et = 0f
-
-        val yaw = if (mode == 0) yawUser + sin(t * 0.5f) * 6f else yawUser + yawAuto
+        val yaw = if (mode == 0) yawUser + sin(t * 0.5f) * 6f else if (mode == 2) yawUser + sin(t * 0.6f) * 26f else yawUser + yawAuto
         val count = slots.count { it != null }
         var idx = 0
         for (i in 0..1) {
             val inst = slots[i] ?: continue
             val x = if (mode == 0 && count == 2) (if (idx == 0) -1.0f else 1.0f) else 0f
+            var em = emoteIds[i]
+            var et = (now - emoteT0s[i]) / 1000f
+            if (em >= 0 && et > Inst.EMOTE_DUR) {
+                emoteIds[i] = -1
+                em = -1
+            }
+            if (em < 0) et = 0f
             if (inst.isChar) {
                 inst.pose(t, em, et)
                 if (mode == 0) drawShadow(x)

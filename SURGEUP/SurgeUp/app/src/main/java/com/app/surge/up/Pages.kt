@@ -2,6 +2,15 @@ package com.app.surge.up
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -60,20 +69,24 @@ import kotlinx.coroutines.launch
 
 /** Kerangka halaman penuh: latar map, tombol kembali, judul miring merah. */
 @Composable
-fun PageFrame(title: String, onBack: () -> Unit, content: @Composable BoxScope.() -> Unit) {
+fun PageFrame(title: String, onBack: () -> Unit, plain: Boolean = false, content: @Composable BoxScope.() -> Unit) {
     Box(Modifier.fillMaxSize()) {
-        Image(
-            painter = painterResource(R.drawable.lobby_scene),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x99000000), Color(0x55000000), Color(0xCC000000)))))
+        if (plain) {
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF07070A), Color(0xFF15151B)))))
+        } else {
+            Image(
+                painter = painterResource(R.drawable.lobby_scene),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x99000000), Color(0x55000000), Color(0xCC000000)))))
+        }
         content()
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier.size(46.dp).clip(SlantShape(8f)).background(Color(0xCC000000))
-                    .clickable { onBack() },
+                    .press { onBack() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Filled.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
@@ -106,6 +119,7 @@ fun CharPage(onBack: () -> Unit) {
     gl.chars = arrayOf(info.id)
     PageFrame("KARAKTER", onBack) {
         Gl3D(gl, Modifier.fillMaxSize())
+        EmoteWheel(gl)
         Column(
             Modifier.align(Alignment.CenterStart).padding(start = 14.dp, top = 56.dp).width(170.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -124,7 +138,7 @@ fun CharPage(onBack: () -> Unit) {
         }
         Text(
             "Seret untuk memutar karakter", color = CSoft, fontSize = 11.sp,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp)
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp)
         )
         Column(
             Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(310.dp)
@@ -151,7 +165,7 @@ fun SlotCard(name: String, badge: String, on: Boolean, onClick: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().height(64.dp).clip(SlantShape(12f))
             .background(if (on) Brush.horizontalGradient(listOf(CRed, CRedDark)) else Brush.horizontalGradient(listOf(Color(0xCC000000), Color(0x99000000))))
-            .clickable { onClick() }.padding(horizontal = 20.dp),
+            .press { onClick() }.padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
@@ -178,36 +192,48 @@ fun WeaponPage(onBack: () -> Unit) {
     gl.weapon = info.id
     PageFrame("SENJATA", onBack) {
         Gl3D(gl, Modifier.fillMaxSize())
+        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xAA000000), Color(0x00000000), Color(0x00000000), Color(0xCC000000)))))
         Column(
-            Modifier.align(Alignment.CenterStart).padding(start = 14.dp, top = 56.dp).width(170.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            Modifier.align(Alignment.CenterStart).padding(start = 14.dp, top = 56.dp).width(196.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             for (w in WEAPONS) {
-                SlotCard(w.name, if (used == w.id) "DIPAKAI" else "", sel == w.id) { sel = w.id }
+                val on = sel == w.id
+                Column(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                        .background(if (on) Brush.horizontalGradient(listOf(Color(0xFF3A0F18), Color(0xCC15151B))) else Brush.horizontalGradient(listOf(Color(0xCC111116), Color(0x99111116))))
+                        .border(1.dp, if (on) CRed else Color(0x22FFFFFF), RoundedCornerShape(12.dp))
+                        .press { sel = w.id }.padding(horizontal = 14.dp, vertical = 12.dp)
+                ) {
+                    Text(w.type, color = if (on) CRed else CSoft, fontWeight = FontWeight.Bold, fontSize = 9.sp)
+                    Text(w.name, color = Color.White, fontWeight = FontWeight.Black, fontStyle = FontStyle.Italic, fontSize = 18.sp)
+                    if (used == w.id) Text("DIPAKAI", color = CGreen, fontWeight = FontWeight.Bold, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
+                }
             }
             for (i in 0 until 2) {
                 Box(
-                    Modifier.fillMaxWidth().height(64.dp).clip(SlantShape(12f)).background(Color(0xAA000000)),
+                    Modifier.fillMaxWidth().height(58.dp).clip(RoundedCornerShape(12.dp)).background(Color(0x66000000))
+                        .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("SEGERA", color = CSoft, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    Text("SEGERA", color = Color(0xFF6A6A78), fontWeight = FontWeight.Bold, fontSize = 11.sp)
                 }
             }
         }
-        Text(
-            "Seret untuk memutar senjata", color = CSoft, fontSize = 11.sp,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp)
-        )
         Column(
-            Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(310.dp)
-                .background(Brush.horizontalGradient(listOf(Color(0x00000000), Color(0xEE0A0A0E))))
-                .padding(start = 36.dp, end = 18.dp, top = 64.dp, bottom = 18.dp)
+            Modifier.align(Alignment.CenterEnd).padding(end = 14.dp, top = 56.dp, bottom = 14.dp).width(300.dp)
+                .clip(RoundedCornerShape(16.dp)).background(Color(0xCC0B0B10))
+                .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(16.dp)).padding(18.dp)
         ) {
-            Text(info.name, color = Color.White, fontWeight = FontWeight.Black, fontStyle = FontStyle.Italic, fontSize = 34.sp)
-            Box(Modifier.width(170.dp).height(3.dp).background(CRed))
-            Text(info.type, color = CRed, fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
-            Text(info.note, color = CSoft, fontSize = 13.sp, modifier = Modifier.padding(top = 14.dp))
-            Text("Senjata yang dipakai jadi senjata awal tiap ronde.", color = CSoft, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
+            Text(info.type, color = CRed, fontWeight = FontWeight.Black, fontSize = 11.sp)
+            Text(info.name, color = Color.White, fontWeight = FontWeight.Black, fontStyle = FontStyle.Italic, fontSize = 32.sp)
+            Box(Modifier.padding(vertical = 8.dp).width(54.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(CRed))
+            Text(info.note, color = Color(0xFFD0D0DA), fontSize = 13.sp)
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("SENJATA AWAL", color = CSoft, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(Color(0xFF1B1B22)).padding(horizontal = 10.dp, vertical = 5.dp))
+            }
             Spacer(Modifier.weight(1f))
             RedButton(if (used == sel) "DIPAKAI" else "PAKAI", Modifier.fillMaxWidth(), enabled = used != sel) {
                 Session.weapon = sel
@@ -215,6 +241,10 @@ fun WeaponPage(onBack: () -> Unit) {
                 UiState.toast = info.name + " dipakai"
             }
         }
+        Text(
+            "Seret untuk memutar senjata", color = CSoft, fontSize = 11.sp,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp)
+        )
     }
 }
 
@@ -228,7 +258,7 @@ fun FriendsPage(onBack: () -> Unit) {
     val friends = UiState.friends
     val reqs = UiState.reqs
     val room = UiState.room
-    PageFrame("TEMAN", onBack) {
+    PageFrame("TEMAN", onBack, true) {
         Row(
             Modifier.fillMaxSize().padding(top = 68.dp, start = 14.dp, end = 14.dp, bottom = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -327,7 +357,7 @@ fun SettingsPage(onBack: () -> Unit) {
     var gf by remember { mutableStateOf(Session.gf) }
     var music by remember { mutableStateOf(Session.music) }
     var vol by remember { mutableStateOf(Session.musicVol) }
-    PageFrame("PENGATURAN", onBack) {
+    PageFrame("PENGATURAN", onBack, true) {
         Column(
             Modifier.align(Alignment.TopCenter).padding(top = 66.dp).width(560.dp).fillMaxHeight()
                 .verticalScroll(rememberScrollState()).padding(bottom = 16.dp),
@@ -420,7 +450,7 @@ fun Chip(label: String, on: Boolean, onClick: () -> Unit) {
     Text(
         label, color = Color.White, fontWeight = FontWeight.Black, fontStyle = FontStyle.Italic, fontSize = 12.sp,
         modifier = Modifier.clip(SlantShape(8f)).background(if (on) CRed else Color(0xFF1E1E24))
-            .clickable { onClick() }.padding(horizontal = 18.dp, vertical = 7.dp)
+            .press { onClick() }.padding(horizontal = 18.dp, vertical = 7.dp)
     )
 }
 
@@ -499,6 +529,55 @@ fun ProfilePage(f: Friend, self: Boolean, onBack: () -> Unit) {
                         UiState.toast = "ID disalin."
                     }
                 }
+            }
+        }
+    }
+}
+
+private val EMOTE_NAMES = listOf("LAMBAI", "JOGET", "HORMAT", "OTOT", "TEPUK", "SORAK")
+
+@Composable
+fun BoxScope.EmoteWheel(gl: Gl3DRenderer) {
+    var open by remember { mutableStateOf(false) }
+    var sel by remember { mutableStateOf(Session.emote) }
+    Column(
+        Modifier.align(Alignment.BottomCenter).padding(bottom = 30.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        AnimatedVisibility(visible = open, enter = fadeIn() + slideInVertically { it / 2 }, exit = fadeOut()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(bottom = 10.dp)) {
+                for (i in EMOTE_NAMES.indices) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            Modifier.size(46.dp).clip(CircleShape)
+                                .background(if (sel == i) CRed else Color(0xCC000000))
+                                .border(1.5.dp, if (sel == i) Color.White else Color(0x55FFFFFF), CircleShape)
+                                .press {
+                                    sel = i
+                                    Session.emote = i
+                                    gl.playEmote(0, i)
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text((i + 1).toString(), color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                        }
+                        Text(EMOTE_NAMES[i], color = CSoft, fontSize = 9.sp, modifier = Modifier.padding(top = 3.dp))
+                    }
+                }
+            }
+        }
+        Box(
+            Modifier.size(54.dp).clip(CircleShape).background(Brush.verticalGradient(listOf(CRed, CRedDark)))
+                .press { open = !open },
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(Modifier.size(26.dp)) {
+                val w = size.width
+                val h = size.height
+                drawCircle(Color.White, w * 0.48f, style = Stroke(2.8f))
+                drawCircle(Color.White, w * 0.06f, Offset(w * 0.34f, h * 0.38f))
+                drawCircle(Color.White, w * 0.06f, Offset(w * 0.66f, h * 0.38f))
+                drawArc(Color.White, 20f, 140f, false, Offset(w * 0.24f, h * 0.30f), Size(w * 0.52f, h * 0.46f), style = Stroke(2.8f))
             }
         }
     }

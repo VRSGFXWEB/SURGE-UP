@@ -4,7 +4,7 @@ import org.json.JSONObject
 
 class Friend(val id: String, val name: String, val online: Boolean, val ava: String = "", val bio: String = "", val ch: String = "PUNK")
 class FriendReq(val fromId: String, val name: String)
-class RoomMember(val id: String, val name: String, val ready: Boolean, val ch: String = "PUNK")
+class RoomMember(val id: String, val name: String, val ready: Boolean, val ch: String = "PUNK", val emote: Int = -1, val emoteT: Long = 0L)
 class RoomState(
     val code: String,
     val host: String,
@@ -134,7 +134,10 @@ object Social {
             if (mo != null) {
                 for (k in mo.keys()) {
                     val m = mo.optJSONObject(k)
-                    if (m != null) ms.add(RoomMember(k, m.optString("n", k), m.optBoolean("r", false), m.optString("c", "PUNK")))
+                    if (m != null) {
+                        val e = m.optJSONObject("e")
+                        ms.add(RoomMember(k, m.optString("n", k), m.optBoolean("r", false), m.optString("c", "PUNK"), e?.optInt("i", -1) ?: -1, e?.optLong("t", 0L) ?: 0L))
+                    }
                 }
             }
             ms.sortBy { if (it.id == host) 0 else 1 }
@@ -217,6 +220,14 @@ object Social {
             return
         }
         UiState.room = st
+    }
+
+    /** Kirim gerakan emote ke anggota room supaya terlihat di lobby teman. */
+    suspend fun sendEmote(id: Int) {
+        val code = UiState.roomCode
+        if (code.isEmpty()) return
+        val body = JSONObject().put("i", id).put("t", ts()).toString()
+        Fb.put(Fb.GAME, "rooms/" + code + "/m/" + Session.id + "/e", body)
     }
 
     suspend fun setReady(r: Boolean) {

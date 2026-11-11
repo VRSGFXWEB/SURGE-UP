@@ -1,6 +1,13 @@
 package com.app.surge.up
 
 import androidx.compose.foundation.Image
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,6 +64,16 @@ class SlantShape(private val skewDp: Float = 16f) : Shape {
     }
 }
 
+fun Modifier.press(enabled: Boolean = true, onClick: () -> Unit): Modifier = composed {
+    val src = remember { MutableInteractionSource() }
+    val pressed by src.collectIsPressedAsState()
+    val sc by animateFloatAsState(if (pressed) 0.94f else 1f, tween(90), label = "press")
+    this.graphicsLayer {
+        scaleX = sc
+        scaleY = sc
+    }.clickable(interactionSource = src, indication = null, enabled = enabled) { onClick() }
+}
+
 fun nameColor(id: String): Color {
     val p = listOf(Color(0xFF4FC3F7), Color(0xFFFFB74D), Color(0xFF81C784), Color(0xFFF06292), Color(0xFFBA68C8))
     return p[(id.hashCode() and 0x7fffffff) % p.size]
@@ -67,7 +84,7 @@ fun RedButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = tr
     Box(
         modifier.clip(RoundedCornerShape(8.dp))
             .background(if (enabled) CRed else CRedDark)
-            .clickable(enabled = enabled) { onClick() }
+            .press(enabled) { onClick() }
             .padding(horizontal = 16.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -80,7 +97,7 @@ fun GoldSlantButton(text: String, modifier: Modifier = Modifier, onClick: () -> 
     Box(
         modifier.clip(SlantShape(14f))
             .background(CGold)
-            .clickable { onClick() }
+            .press { onClick() }
             .padding(horizontal = 22.dp, vertical = 9.dp),
         contentAlignment = Alignment.Center
     ) {

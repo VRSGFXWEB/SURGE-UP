@@ -86,6 +86,12 @@ object Session {
             prefs.edit().putFloat("uis", v).apply()
         }
 
+    var emote: Int
+        get() = prefs.getInt("emote", 0)
+        set(v) {
+            prefs.edit().putInt("emote", v).apply()
+        }
+
     var music: Boolean
         get() = prefs.getBoolean("music", true)
         set(v) {

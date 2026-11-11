@@ -46,3 +46,7 @@ B) GitHub (tanpa PC): upload semua isi folder ini (termasuk .github) ke repo bar
 - Joseph dipakai di dalam game: mesh Joseph dipasang ke kerangka Punk (assets/joseph_rig.glb), memakai animasi Punk.
 - Tombol emoji dihapus. Ketuk karakter di lobby memicu gerakan.
 - Layar penuh juga di menu (tidak ada strip hitam di kiri).
+
+## Pembaruan: kontrol, lobby, dan efek
+- Game: ikon lari, gloo wall, jongkok, tinju, dan senjata SG diganti; joystick berlapis dengan penanda arah; map training lebih besar; grafik SEDANG = mode malam + kunang-kunang; lawan memakai karakter yang sama (Joseph/Punk).
+- Lobby: loading screen bar di tengah tanpa garis; pill koin/diamond dan nama karakter baru; halaman Teman dan Pengaturan berlatar hitam; animasi saat tombol ditekan; halaman Senjata modern dan senjata tampil dari samping; roda emote bulat di halaman Karakter (6 emote); emote hanya karakter sendiri dan terlihat oleh teman satu room.

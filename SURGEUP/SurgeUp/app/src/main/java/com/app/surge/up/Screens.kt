@@ -64,7 +64,8 @@ class Launch(
     val oppName: String,
     val map: String,
     val host: Boolean = false,
-    val cancelable: Boolean = true
+    val cancelable: Boolean = true,
+    val oppChar: String = "PUNK"
 )
 
 fun startGame(ctx: Context, l: Launch) {
@@ -73,6 +74,7 @@ fun startGame(ctx: Context, l: Launch) {
     i.putExtra("opp", l.oppId)
     i.putExtra("oppName", l.oppName)
     i.putExtra("map", l.map)
+    i.putExtra("oppChar", l.oppChar)
     ctx.startActivity(i)
 }
 
@@ -188,33 +190,19 @@ fun LoadingScreen(text: String, ms: Long, onCancel: (() -> Unit)? = null, onDone
         )
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x33000000), Color(0xEE000000)))))
         Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xAA000000), Color.Transparent, Color(0x66000000)))))
-        // garis cahaya merah yang bergerak
-        Canvas(Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
-            for (k in 0 until 3) {
-                val x = ((sweep + k * 0.33f) % 1f) * (w + h) - h
-                drawLine(
-                    color = Color(0x55E5233A),
-                    start = Offset(x, h),
-                    end = Offset(x + h * 0.6f, 0f),
-                    strokeWidth = 3f + k * 2f
-                )
-            }
-        }
         Column(
-            Modifier.align(Alignment.BottomStart).padding(start = 36.dp, bottom = 30.dp).width(420.dp)
+            Modifier.align(Alignment.Center).width(460.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(verticalAlignment = Alignment.Bottom) {
                 Text("SURGE", color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Black, fontStyle = FontStyle.Italic)
                 Text("UP", color = CRed, fontSize = 40.sp, fontWeight = FontWeight.Black, fontStyle = FontStyle.Italic)
             }
-            Box(Modifier.width(120.dp).height(3.dp).background(CRed))
             Spacer(Modifier.height(10.dp))
             Text(text, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             Text(tip, color = CSoft, fontSize = 12.sp)
             Spacer(Modifier.height(10.dp))
-            Box(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xFF26262E))) {
+            Box(Modifier.fillMaxWidth().height(12.dp).clip(RoundedCornerShape(6.dp)).background(Color(0x99000000))) {
                 Box(
                     Modifier.fillMaxWidth(progress).fillMaxHeight()
                         .background(Brush.horizontalGradient(listOf(CRedDark, CRed, Color(0xFFFF6B7A))))

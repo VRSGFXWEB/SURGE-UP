@@ -90,123 +90,70 @@ import java.util.Locale
 fun LobbyScreen(onStart: (Launch) -> Unit, onSearch: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-
     var dlg by remember { mutableStateOf("") }
     var chatTab by remember { mutableStateOf("GLOBAL") }
     var chatOpen by remember { mutableStateOf(false) }
-
     val room = UiState.room
     val me = Session.id
     val invite = UiState.invite
     val banner = UiState.banner
 
-    LaunchedEffect(Unit) {
-        Music.start(ctx)
-    }
-
-    LaunchedEffect(Unit) {
-        Social.syncProfile()
-    }
-
+    LaunchedEffect(Unit) { Music.start(ctx) }
+    LaunchedEffect(Unit) { Social.syncProfile() }
     DisposableEffect(Unit) {
         UiState.lobbyActive = true
-
-        onDispose {
-            UiState.lobbyActive = false
-        }
+        onDispose { UiState.lobbyActive = false }
     }
 
-    // Sinkronisasi room, undangan, dan teman
+    // sinkron teman, room, undangan; mulai pertandingan saat host menekan MULAI
     LaunchedEffect(Unit) {
         var n = 0
-
         while (true) {
             Social.pollRoom()
             Social.pollInvites()
-
             val st = UiState.room
-
-            if (
-                st != null &&
-                st.members.size == 2 &&
-                st.go.isNotEmpty() &&
-                st.go != Social.lastGo &&
-                Social.goFresh(st.go)
-            ) {
+            if (st != null && st.members.size == 2 && st.go.isNotEmpty() && st.go != Social.lastGo && Social.goFresh(st.go)) {
                 Social.lastGo = st.go
-
-                val opp = st.members.firstOrNull {
-                    it.id != me
-                }
-
-                if (opp != null) {
-                    onStart(
-                        Launch(
-                            opp.id,
-                            opp.name,
-                            st.map,
-                            false,
-                            false
-                        )
-                    )
-                }
+                val opp = st.members.firstOrNull { it.id != me }
+                if (opp != null) onStart(Launch(opp.id, opp.name, st.map, false, false, opp.ch))
             }
-
             if (n % 5 == 0) {
                 val f = Social.loadFriends()
                 if (f != null) UiState.friends = f
-
                 val r = Social.loadReqs()
                 if (r != null) UiState.reqs = r
             }
-
             n++
             delay(2000L)
         }
     }
-
-    // Chat global
+    // chat global
     LaunchedEffect(Unit) {
         while (true) {
             val m = Chat.fetch()
-
-            if (m != null) {
-                UiState.messages = m
-            }
-
+            if (m != null) UiState.messages = m
             delay(3000L)
         }
     }
-
-    // Chat tim
+    // chat tim (di dalam room)
     LaunchedEffect(room?.code) {
         val code = room?.code
-
         if (code == null) {
             UiState.teamMessages = emptyList()
         } else {
             while (true) {
                 val m = Chat.fetch("rooms/" + code + "/chat")
-
-                if (m != null) {
-                    UiState.teamMessages = m
-                }
-
+                if (m != null) UiState.teamMessages = m
                 delay(3000L)
             }
         }
     }
-
     LaunchedEffect(banner) {
         if (banner != null) {
             delay(5000L)
-
-            if (UiState.banner === banner) {
-                UiState.banner = null
-            }
+            if (UiState.banner === banner) UiState.banner = null
         }
     }
-
     LaunchedEffect(UiState.toast) {
         if (UiState.toast.isNotEmpty()) {
             delay(2200L)
@@ -217,71 +164,46 @@ fun LobbyScreen(onStart: (Launch) -> Unit, onSearch: () -> Unit) {
     val doStart: () -> Unit = {
         scope.launch {
             val st = UiState.room
-
             if (st == null || st.members.size < 2) {
                 if (st != null && st.mode == "2v2") {
                     UiState.toast = "2v2 butuh 2 pemain. Undang teman dulu."
                 } else {
-                    onStart(
-                        Launch("", "", st?.map ?: Social.MAP_TRAIN)
-                    )
+                    onStart(Launch("", "", st?.map ?: Social.MAP_TRAIN))
                 }
             } else if (st.host == me) {
-                val other = st.members.firstOrNull {
-                    it.id != me
-                }
-
+                val other = st.members.firstOrNull { it.id != me }
                 if (other == null || !other.ready) {
                     UiState.toast = "Tunggu teman siap dulu."
                 } else if (st.mode == "2v2") {
                     onSearch()
                 } else {
-                    onStart(
-                        Launch(
-                            other.id,
-                            other.name,
-                            st.map,
-                            true,
-                            true
-                        )
-                    )
+                    onStart(Launch(other.id, other.name, st.map, true, true, other.ch))
                 }
             } else {
-                val mine = st.members.firstOrNull {
-                    it.id == me
-                }
-
+                val mine = st.members.firstOrNull { it.id == me }
                 Social.setReady(!(mine?.ready ?: false))
             }
         }
     }
 
-    BackHandler(
-        enabled = UiState.page != "home" || UiState.viewFriend != null
-    ) {
-        if (UiState.viewFriend != null) {
-            UiState.viewFriend = null
-        } else {
-            UiState.page = "home"
-        }
+    BackHandler(enabled = UiState.page != "home" || UiState.viewFriend != null) {
+        if (UiState.viewFriend != null) UiState.viewFriend = null else UiState.page = "home"
     }
-
     val page = UiState.page
     val vf = UiState.viewFriend
-
     val glLobby = rememberGl(0)
-    val mateM = room?.members?.firstOrNull {
-        it.id != me
-    }
-
-    glLobby.chars = if (mateM != null) {
-        arrayOf(Session.char, mateM.ch)
-    } else {
-        arrayOf(Session.char)
-    }
-
+    val mateM = room?.members?.firstOrNull { it.id != me }
+    glLobby.chars = if (mateM != null) arrayOf(Session.char, mateM.ch) else arrayOf(Session.char)
     glLobby.tapEmote = true
-
+    glLobby.onLocalTap = {
+        val eid = Session.emote
+        glLobby.playEmote(0, eid)
+        scope.launch { Social.sendEmote(eid) }
+    }
+    LaunchedEffect(mateM?.emoteT) {
+        val mm = mateM
+        if (mm != null && mm.emoteT > 0L && Fb.now() - mm.emoteT < 6000L) glLobby.playEmote(1, mm.emote)
+    }
     LaunchedEffect(UiState.hint) {
         if (UiState.hint.isNotEmpty()) {
             delay(9000L)
@@ -290,239 +212,101 @@ fun LobbyScreen(onStart: (Launch) -> Unit, onSearch: () -> Unit) {
     }
 
     Box(Modifier.fillMaxSize()) {
-
         if (vf != null) {
-            ProfilePage(vf, vf.id == Session.id) {
-                UiState.viewFriend = null
-            }
-
+            ProfilePage(vf, vf.id == Session.id) { UiState.viewFriend = null }
         } else if (page == "char") {
-            CharPage {
-                UiState.page = "home"
-            }
-
+            CharPage { UiState.page = "home" }
         } else if (page == "weapon") {
-            WeaponPage {
-                UiState.page = "home"
-            }
-
+            WeaponPage { UiState.page = "home" }
         } else if (page == "friends") {
-            FriendsPage {
-                UiState.page = "home"
-            }
-
+            FriendsPage { UiState.page = "home" }
         } else if (page == "settings") {
-            SettingsPage {
-                UiState.page = "home"
-            }
-
+            SettingsPage { UiState.page = "home" }
         } else {
-
             Gl3D(glLobby, Modifier.fillMaxSize())
-
-            Box(
-                Modifier.fillMaxSize().background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            Color(0xB3000000),
-                            Color(0x00000000),
-                            Color(0x00000000),
-                            Color(0xB3000000)
-                        )
-                    )
-                )
-            )
-
-            Box(
-                Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color(0x80000000),
-                            Color.Transparent,
-                            Color(0x66000000)
-                        )
-                    )
-                )
-            )
-
-            Column(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxHeight(0.2f),
-                verticalArrangement = Arrangement.Top
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(
-                        if (mateM != null) 90.dp else 0.dp
-                    )
-                ) {
+            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0xB3000000), Color(0x00000000), Color(0x00000000), Color(0xB3000000)))))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x80000000), Color.Transparent, Color(0x66000000)))))
+            // nama pemain di bawah karakter
+            Column(Modifier.align(Alignment.BottomCenter).fillMaxHeight(0.2f), verticalArrangement = Arrangement.Top) {
+                Row(horizontalArrangement = Arrangement.spacedBy(if (mateM != null) 90.dp else 0.dp)) {
                     NameTag(Session.name)
-
-                    if (mateM != null) {
-                        NameTag(mateM.name)
-                    }
+                    if (mateM != null) NameTag(mateM.name)
                 }
             }
 
-            TopBar(
-                dlg = { dlg = it }
-            )
+            TopBar(dlg = { dlg = it })
 
-            Box(
-                Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(top = 40.dp)
-            ) {
-                NavColumn(chatOpen) {
-                    chatOpen = !chatOpen
-                }
+            // menu kiri
+            Box(Modifier.align(Alignment.CenterStart).padding(top = 40.dp)) {
+                NavColumn(chatOpen) { chatOpen = !chatOpen }
             }
-
+            // chat global: muncul saat tombol CHAT ditekan
             if (chatOpen) {
                 ChatPanel(
-                    chatTab,
-                    { chatTab = it },
-                    { chatOpen = false },
-                    Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 152.dp, bottom = 12.dp)
-                        .width(300.dp)
-                        .height(230.dp)
+                    chatTab, { chatTab = it }, { chatOpen = false },
+                    Modifier.align(Alignment.BottomStart).padding(start = 152.dp, bottom = 12.dp).width(300.dp).height(230.dp)
                 )
             }
 
-            if (!chatOpen) {
-                ChatPreview(
-                    Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 14.dp, bottom = 12.dp)
-                )
-            }
+            if (!chatOpen) ChatPreview(Modifier.align(Alignment.BottomStart).padding(start = 14.dp, bottom = 12.dp))
 
+            // kolom kanan: teman + squad + mulai
             Column(
-                Modifier
-                    .align(Alignment.CenterEnd)
-                    .fillMaxHeight()
-                    .width(300.dp)
-                    .padding(
-                        top = 64.dp,
-                        bottom = 10.dp,
-                        end = 10.dp
-                    )
+                Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(300.dp).padding(top = 64.dp, bottom = 10.dp, end = 10.dp)
             ) {
-                TeamPanel(
-                    room,
-                    { UiState.page = "friends" },
-                    Modifier.weight(1f).fillMaxWidth()
-                )
-
+                TeamPanel(room, { UiState.page = "friends" }, Modifier.weight(1f).fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-
-                SquadCard(room, me) {
-                    dlg = "room"
-                }
-
+                SquadCard(room, me) { dlg = "room" }
                 Spacer(Modifier.height(8.dp))
-
                 StartButton(room, me, doStart)
             }
         }
 
         AnimatedVisibility(
-            visible = UiState.hint.isNotEmpty() &&
-                invite == null &&
-                page == "home",
+            visible = UiState.hint.isNotEmpty() && invite == null && page == "home",
             enter = slideInVertically() + fadeIn(),
             exit = fadeOut(),
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 8.dp)
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp)
         ) {
-            HintBanner(
-                UiState.hint,
-                onOpen = {
-                    UiState.hint = ""
-                    UiState.page = "settings"
-                },
-                onClose = {
-                    UiState.hint = ""
-                }
-            )
+            HintBanner(UiState.hint, onOpen = {
+                UiState.hint = ""
+                UiState.page = "settings"
+            }, onClose = { UiState.hint = "" })
         }
 
         if (invite != null) {
             InviteBanner(
                 invite,
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 8.dp),
+                Modifier.align(Alignment.TopCenter).padding(top = 8.dp),
                 onAccept = {
                     scope.launch {
                         val err = Social.acceptInvite(invite)
-
-                        UiState.toast = if (err.isEmpty()) {
-                            "Masuk ke room " + invite.fromName
-                        } else {
-                            err
-                        }
+                        UiState.toast = if (err.isEmpty()) "Masuk ke room " + invite.fromName else err
                     }
                 },
-                onDecline = {
-                    scope.launch {
-                        Social.declineInvite(invite)
-                    }
-                }
+                onDecline = { scope.launch { Social.declineInvite(invite) } }
             )
-
         } else if (banner != null) {
             Row(
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 8.dp)
-                    .width(380.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xF0140A0E))
-                    .border(1.dp, CRed, RoundedCornerShape(8.dp))
-                    .padding(10.dp),
+                Modifier.align(Alignment.TopCenter).padding(top = 8.dp).width(380.dp)
+                    .clip(RoundedCornerShape(8.dp)).background(Color(0xF0140A0E))
+                    .border(1.dp, CRed, RoundedCornerShape(8.dp)).padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Avatar("!", 34)
-
                 Spacer(Modifier.width(10.dp))
-
                 Column(Modifier.weight(1f)) {
-                    Text(
-                        banner.title,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        maxLines = 1
-                    )
-
-                    Text(
-                        banner.body,
-                        color = CSoft,
-                        fontSize = 12.sp,
-                        maxLines = 2
-                    )
+                    Text(banner.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+                    Text(banner.body, color = CSoft, fontSize = 12.sp, maxLines = 2)
                 }
             }
         }
 
         if (UiState.toast.isNotEmpty()) {
             Text(
-                UiState.toast,
-                color = Color.White,
-                fontSize = 13.sp,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 18.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xE6000000))
-                    .padding(
-                        horizontal = 14.dp,
-                        vertical = 7.dp
-                    )
+                UiState.toast, color = Color.White, fontSize = 13.sp,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 18.dp)
+                    .clip(RoundedCornerShape(6.dp)).background(Color(0xE6000000)).padding(horizontal = 14.dp, vertical = 7.dp)
             )
         }
     }
@@ -583,7 +367,7 @@ fun Pill(value: String) {
 
 @Composable
 fun TopIcon(icon: ImageVector, dot: Boolean, onClick: () -> Unit) {
-    Box(Modifier.padding(horizontal = 6.dp).clickable { onClick() }.padding(6.dp)) {
+    Box(Modifier.padding(horizontal = 6.dp).press { onClick() }.padding(6.dp)) {
         Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
         if (dot) Box(Modifier.align(Alignment.TopEnd).size(8.dp).clip(CircleShape).background(CRed))
     }
@@ -606,7 +390,7 @@ fun NavItem(kind: String, label: String, on: Boolean, onClick: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().clip(SlantShape(10f))
             .background(if (on) Brush.horizontalGradient(listOf(CRed, CRedDark)) else Brush.horizontalGradient(listOf(Color(0x99000000), Color(0x00000000))))
-            .clickable { onClick() }.padding(horizontal = 12.dp, vertical = 10.dp),
+            .press { onClick() }.padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         NavIcon(kind)
@@ -632,14 +416,9 @@ fun ChatPanel(tab: String, onTab: (String) -> Unit, onClose: () -> Unit, modifie
     Column(
         modifier.clip(RoundedCornerShape(8.dp)).background(CPanel).border(1.dp, CLine, RoundedCornerShape(8.dp))
     ) {
-       Row(Modifier.fillMaxWidth().background(Color(0xFF0E0E13))) {
-    ChatTab("GLOBAL", tab == "GLOBAL", Modifier.weight(1f)) {
-        onTab("GLOBAL")
-    }
-
-    ChatTab("TIM", tab == "TIM", Modifier.weight(1f)) {
-        onTab("TIM")
-    }
+        Row(Modifier.fillMaxWidth().background(Color(0xFF0E0E13))) {
+            ChatTab("GLOBAL", tab == "GLOBAL", Modifier.weight(1f)) { onTab("GLOBAL") }
+            ChatTab("TIM", tab == "TIM", Modifier.weight(1f)) { onTab("TIM") }
             Box(Modifier.clickable { onClose() }.padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
                 Icon(Icons.Filled.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
             }
@@ -724,7 +503,7 @@ fun ChatTab(
     Box(
         modifier
             .background(if (on) CRed else Color.Transparent)
-            .clickable { onClick() }
+            .press { onClick() }
             .padding(vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -754,7 +533,7 @@ fun TeamPanel(room: RoomState?, onAdd: () -> Unit, modifier: Modifier) {
         Spacer(Modifier.height(6.dp))
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             Row(
-                Modifier.fillMaxWidth().clip(SlantShape(14f)).background(CGold).clickable { onAdd() }.padding(vertical = 8.dp),
+                Modifier.fillMaxWidth().clip(SlantShape(14f)).background(CGold).press { onAdd() }.padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -801,7 +580,7 @@ fun FriendRow(f: Friend, inRoom: Boolean, onInvite: () -> Unit) {
             Text(
                 "UNDANG", color = if (f.online) Color(0xFF1A1205) else CSoft, fontWeight = FontWeight.Black, fontStyle = FontStyle.Italic, fontSize = 12.sp,
                 modifier = Modifier.clip(SlantShape(8f)).background(if (f.online) CGold else Color(0xFF1B1B22))
-                    .clickable { onInvite() }.padding(horizontal = 12.dp, vertical = 6.dp)
+                    .press { onInvite() }.padding(horizontal = 12.dp, vertical = 6.dp)
             )
         }
     }
@@ -824,7 +603,7 @@ fun SquadCard(room: RoomState?, me: String, onOpen: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().height(86.dp).clip(RoundedCornerShape(8.dp))
             .background(Brush.horizontalGradient(listOf(Color(0xFF0B0B10), Color(0xFF2E0A12))))
-            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(8.dp)).clickable { onOpen() }.padding(10.dp),
+            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(8.dp)).press { onOpen() }.padding(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -849,7 +628,7 @@ fun StartButton(room: RoomState?, me: String, onClick: () -> Unit) {
     Box(
         Modifier.fillMaxWidth().height(78.dp).clip(SlantShape(22f))
             .background(Brush.horizontalGradient(listOf(CRedDark, CRed, Color(0xFFFF4A5E))))
-            .clickable { onClick() },
+            .press { onClick() },
         contentAlignment = Alignment.Center
     ) {
         Text(label, color = Color.White, fontWeight = FontWeight.Black, fontStyle = FontStyle.Italic, fontSize = 36.sp)
@@ -1125,34 +904,42 @@ fun ChatButton(on: Boolean, onClick: () -> Unit) {
 @Composable
 fun CurrencyPill(gold: Boolean, value: String) {
     Row(
-        Modifier.clip(SlantShape(10f)).background(CPanel).border(1.dp, Color(0x33FFFFFF), SlantShape(10f))
-            .padding(start = 18.dp, end = 22.dp, top = 6.dp, bottom = 6.dp),
+        Modifier.clip(SlantShape(12f))
+            .background(Brush.horizontalGradient(listOf(Color(0xE60E0E14), Color(0xE6191922))))
+            .padding(start = 8.dp, end = 6.dp, top = 5.dp, bottom = 5.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Canvas(Modifier.size(20.dp)) {
-            val w = size.width
-            val h = size.height
-            if (gold) {
-                drawCircle(Color(0xFFFFC933), w * 0.5f)
-                drawCircle(Color(0xFFB8860B), w * 0.32f, style = Stroke(3f))
-            } else {
-                val p = Path()
-                p.moveTo(w * 0.5f, 0f)
-                p.lineTo(w, h * 0.38f)
-                p.lineTo(w * 0.5f, h)
-                p.lineTo(0f, h * 0.38f)
-                p.close()
-                drawPath(p, Color(0xFFFF5C70))
-                val q = Path()
-                q.moveTo(w * 0.5f, 0f)
-                q.lineTo(w * 0.72f, h * 0.38f)
-                q.lineTo(w * 0.28f, h * 0.38f)
-                q.close()
-                drawPath(q, Color(0x88FFFFFF))
+        Box(
+            Modifier.size(30.dp).clip(CircleShape)
+                .background(Brush.verticalGradient(if (gold) listOf(Color(0xFFFFE08A), Color(0xFFE0A21A)) else listOf(Color(0xFFFF8896), Color(0xFFD7263D)))),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(Modifier.size(16.dp)) {
+                val w = size.width
+                val h = size.height
+                if (gold) {
+                    drawCircle(Color(0xFF8A5A00), w * 0.46f, style = Stroke(2.5f))
+                    drawRect(Color(0xFF8A5A00), Offset(w * 0.44f, h * 0.22f), Size(w * 0.12f, h * 0.56f))
+                } else {
+                    val p = Path()
+                    p.moveTo(w * 0.5f, 0f)
+                    p.lineTo(w, h * 0.38f)
+                    p.lineTo(w * 0.5f, h)
+                    p.lineTo(0f, h * 0.38f)
+                    p.close()
+                    drawPath(p, Color.White)
+                }
             }
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(10.dp))
         Text(value, color = Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp)
+        Spacer(Modifier.width(12.dp))
+        Box(
+            Modifier.size(24.dp).clip(RoundedCornerShape(7.dp)).background(Color(0xFF2A2A34)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("+", color = Color(0xFFFFC933), fontWeight = FontWeight.Black, fontSize = 16.sp)
+        }
     }
 }
 
@@ -1216,10 +1003,17 @@ fun NavIcon(kind: String) {
 
 @Composable
 fun NameTag(name: String) {
-    Text(
-        name.uppercase(), color = Color.White, fontWeight = FontWeight.Black, fontStyle = FontStyle.Italic, fontSize = 13.sp, maxLines = 1,
-        modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xCC000000)).padding(horizontal = 12.dp, vertical = 3.dp)
-    )
+    Row(
+        Modifier.padding(top = 6.dp).clip(SlantShape(10f)).background(Color(0xCC0B0B10)),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.width(5.dp).height(26.dp).background(CRed))
+        Text(
+            name.uppercase(), color = Color.White, fontWeight = FontWeight.Black, fontStyle = FontStyle.Italic,
+            fontSize = 13.sp, maxLines = 1,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+        )
+    }
 }
 
 @Composable
